@@ -1,10 +1,3 @@
-Menu="Utilities"
-Icon="CoolFanControl.png"
-Type="xmenu"
-Tabs="true"
-Title="Fan Control"
-Tag="fan16.png"
----
 <?php
 /*
     Copyright (c) 2023, Thierry Tremblay
@@ -32,12 +25,16 @@ Tag="fan16.png"
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-$plugin = "CoolFanControl";
-$root = "${_SERVER['DOCUMENT_ROOT']}/plugins/$plugin/";
-$include = "${root}include/";
+// Chips can be mounted to different locations on each reboot.
+// To woakaround this we need to use the chip name as our device key and not persist it.
+function detect_chips() {
+    $raw = shell_exec("find /sys/class/hwmon/hwmon* -follow -maxdepth 1 -type f -iname 'name'");
+    $paths = explode("\n", trim($raw));
+    $chips = array_unique(array_map(fn($filename) => file_get_contents($filename), $paths));
+    sort($chips);
+    echo print_r($chips,1);
+    return $chips;
+}
 
-include($include."detect.php");
-
+detect_chips();
 ?>
-
-FanControl - Hello world!
