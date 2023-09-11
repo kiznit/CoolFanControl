@@ -28,18 +28,34 @@
 // Chips can be mounted to different locations on each reboot.
 // To woakaround this we need to use the chip name as our device key and not persist it.
 
-function read_chip($pathname) {
-    $chip = array(
+function exec_command($command) {
+    $raw = trim(shell_exec($command));
+    return empty($raw) ? array() : explode("\n", $raw);
+}
+
+function detect_sensors($path, $type) {
+    $pathnames = exec_command("find ${path}/${type}[0-9]_input");
+    return array_map(fn($pathname) => array(
+        "name" => basename($pathname),
+        "type" => $type,
+        "input" => $pathname,
+    ), $pathnames);
+}
+
+function detect_chip($pathname) {
+    $path = dirname($pathname);
+    return array(
         "name" => file_get_contents($pathname),
-        "path" => dirname($pathname),
+        "path" => $path,
+        "realpath" => exec("realpath ".$path),      # TODO: this is nice, but do we care / need it for anything?
+        "sensors" => detect_sensors($path, "fan") + detect_sensors($path, "temp"),
     );
-    return $chip;
 }
 
 function detect_chips() {
-    $raw = shell_exec("find /sys/class/hwmon/hwmon*/name -follow -maxdepth 1 -type f");
-    $pathnames = explode("\n", trim($raw));
-    $chips = array_map(fn($pathname) => read_chip($pathname), $pathnames);
+    $pathnames = exec_command("find /sys/class/hwmon/hwmon*/name -follow -maxdepth 1 -type f");
+    $chips = array_map(fn($pathname) => detect_chip($pathname), $pathnames);
+    $chips = array_filter($chips, fn($chip) => !empty($chip["sensors"]));
     sort($chips);
     return $chips;
 }
