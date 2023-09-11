@@ -38,6 +38,7 @@ $include = "${root}include/";
 
 include($include."detect.php");
 
+$chips = detect_chips();
 ?>
 
 FanControl - Hello world!

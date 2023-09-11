@@ -27,14 +27,20 @@
 
 // Chips can be mounted to different locations on each reboot.
 // To woakaround this we need to use the chip name as our device key and not persist it.
-function detect_chips() {
-    $raw = shell_exec("find /sys/class/hwmon/hwmon* -follow -maxdepth 1 -type f -iname 'name'");
-    $paths = explode("\n", trim($raw));
-    $chips = array_unique(array_map(fn($filename) => file_get_contents($filename), $paths));
-    sort($chips);
-    echo print_r($chips,1);
-    return $chips;
+
+function read_chip($pathname) {
+    $chip = array(
+        "name" => file_get_contents($pathname),
+        "path" => dirname($pathname),
+    );
+    return $chip;
 }
 
-detect_chips();
+function detect_chips() {
+    $raw = shell_exec("find /sys/class/hwmon/hwmon*/name -follow -maxdepth 1 -type f");
+    $pathnames = explode("\n", trim($raw));
+    $chips = array_map(fn($pathname) => read_chip($pathname), $pathnames);
+    sort($chips);
+    return $chips;
+}
 ?>
