@@ -29,17 +29,23 @@
 // To woakaround this we need to use the chip name as our device key and not persist it.
 
 function exec_command($command) {
-    $raw = trim(shell_exec($command));
+    $raw = trim(shell_exec($command." 2>nul"));
     return empty($raw) ? [] : explode("\n", $raw);
 }
 
 function detect_sensors($path, $type) {
     $pathnames = exec_command("find ${path}/${type}[0-9]_input");
-    return array_map(fn($pathname) => array(
-        "name" => basename($pathname),
-        "type" => $type,
-        "input" => $pathname,
-    ), $pathnames);
+    $sensors = [];
+    foreach($pathnames as $input) {
+        $path = substr($input, 0, -6);
+        $sensors[] = [
+            "name" => basename($input),
+            "type" => $type,
+            "input" => $input,
+            "label" => file_get_contents($path."_label"),
+        ];
+    }
+    return $sensors;
 }
 
 
@@ -88,5 +94,5 @@ function detect_disks() {
     return $disks;
 }
 
-echo print_r(detect_disks(), true);
+echo print_r(detect_chips(), true);
 ?>
