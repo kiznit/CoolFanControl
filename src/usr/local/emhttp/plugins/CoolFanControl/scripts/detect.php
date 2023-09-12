@@ -30,7 +30,7 @@
 
 function exec_command($command) {
     $raw = trim(shell_exec($command));
-    return empty($raw) ? array() : explode("\n", $raw);
+    return empty($raw) ? [] : explode("\n", $raw);
 }
 
 function detect_sensors($path, $type) {
@@ -42,21 +42,51 @@ function detect_sensors($path, $type) {
     ), $pathnames);
 }
 
+
 function detect_chip($pathname) {
     $path = dirname($pathname);
-    return array(
+    return [
         "name" => file_get_contents($pathname),
         "path" => $path,
-        "realpath" => exec("realpath ".$path),      # TODO: this is nice, but do we care / need it for anything?
-        "sensors" => detect_sensors($path, "fan") + detect_sensors($path, "temp"),
-    );
+        "realpath" => realpath($path),      # TODO: this is nice, but do we care / need it for anything?
+        "sensors" => detect_sensors($path, "fan") + detect_sensors($path, "temp")
+    ];
 }
+
 
 function detect_chips() {
     $pathnames = exec_command("find /sys/class/hwmon/hwmon*/name -follow -maxdepth 1 -type f");
     $chips = array_map(fn($pathname) => detect_chip($pathname), $pathnames);
     $chips = array_filter($chips, fn($chip) => !empty($chip["sensors"]));
-    sort($chips);
     return $chips;
 }
+
+
+function detect_disks() {
+    $devices = exec_command("find /sys/block/{[hs]d*[a-z],nvme[0-9a-f]*}");
+    $disks = [];
+    foreach($devices as $device) 
+    {
+        $disks[basename($device)] = [
+            "path" => realpath($device),
+        ];
+    }
+
+    $hwmons = array_map(fn($path) => realpath($path), exec_command("find /sys/class/hwmon/*"));
+    foreach($hwmons as $hwmon) {
+        $prefix = $hwmon; 
+        $index = strpos($prefix, "/hwmon");
+        if ($index) $prefix = substr($prefix, 0, $index);
+        foreach($disks as &$disk) {
+            if (str_starts_with($disk["path"], $prefix)) {
+                $disk["hwmon"] = $hwmon;
+                $disk["chip"] = file_get_contents($hwmon."/name");
+            }
+        }
+    }
+
+    return $disks;
+}
+
+echo print_r(detect_disks(), true);
 ?>

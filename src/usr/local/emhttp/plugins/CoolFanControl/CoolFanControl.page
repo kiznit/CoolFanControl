@@ -34,9 +34,8 @@ Tag="fan16.png"
 
 $plugin = "CoolFanControl";
 $root = "${_SERVER['DOCUMENT_ROOT']}/plugins/$plugin/";
-$include = "${root}include/";
 
-include($include."detect.php");
+include("${root}/scripts/detect.php");
 
 $chips = detect_chips();
 ?>
