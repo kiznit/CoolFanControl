@@ -34,7 +34,7 @@ Tag="fa-thermometer"
     <div class="title">
         <span class="left">
             <i class = "fa fa-microchip"></i>
-            <?=$chip["name"]?>(<?=$chip["realpath"]?>)
+            <?=$chip["name"]?>(<?=$chip["path"]?>)
         </span>
     </div>
     <div class="table">
@@ -47,7 +47,7 @@ Tag="fa-thermometer"
         </tr>
         <?php foreach($chip["sensors"] as $sensor): ?>
             <tr>
-                <td><?=$sensor["name"]?></td>
+                <td><?=$sensor["label"] ?: $sensor["name"]?></td>
                 <td><?=$sensor["type"]?></td>
                 <td><?=$sensor["input"]?></td>
                 <td>*</td>

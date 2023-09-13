@@ -37,7 +37,6 @@ $root = "${_SERVER['DOCUMENT_ROOT']}/plugins/$plugin/";
 
 include("${root}/scripts/detect.php");
 
-$chips = detect_chips();
 ?>
 
 FanControl - Hello world!

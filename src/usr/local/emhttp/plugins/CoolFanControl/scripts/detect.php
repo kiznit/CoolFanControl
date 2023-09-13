@@ -39,7 +39,7 @@ function detect_pwms($path) {
     foreach($pathnames as $path) {
         $pwms[] = [
             "name" => basename($path),
-            "label" => file_get_contents($path."_label"),
+            "label" => trim(file_get_contents($path."_label")),
         ];
     }
     return $pwms;
@@ -53,7 +53,7 @@ function detect_sensors($path, $type) {
         $sensors[] = [
             "name" => basename($path),
             "type" => $type,
-            "label" => file_get_contents($path."_label"),
+            "label" => trim(file_get_contents($path."_label")),
         ];
     }
     return $sensors;
@@ -63,9 +63,8 @@ function detect_sensors($path, $type) {
 function detect_chip($pathname) {
     $path = dirname($pathname);
     return [
-        "name" => file_get_contents($pathname),
-        "path" => $path,
-        "realpath" => realpath($path),      # TODO: this is nice, but do we care / need it for anything?
+        "name" => trim(file_get_contents($pathname)),
+        "path" => realpath($path),
         "pwms" => detect_pwms($path),
         "sensors" => detect_sensors($path, "fan") + detect_sensors($path, "temp"),
     ];
@@ -86,7 +85,7 @@ function detect_disks() {
     foreach($devices as $device) 
     {
         $disks[basename($device)] = [
-            "path" => realpath($device),
+            "realpath" => realpath($device),
         ];
     }
 
@@ -96,9 +95,8 @@ function detect_disks() {
         $index = strpos($prefix, "/hwmon");
         if ($index) $prefix = substr($prefix, 0, $index);
         foreach($disks as &$disk) {
-            if (str_starts_with($disk["path"], $prefix)) {
-                $disk["hwmon"] = $hwmon;
-                $disk["chip"] = file_get_contents($hwmon."/name");
+            if (str_starts_with($disk["realpath"], $prefix)) {
+                $disk["chip"] = $hwmon;
             }
         }
     }
@@ -106,5 +104,9 @@ function detect_disks() {
     return $disks;
 }
 
-echo print_r(detect_chips(), true);
+
+$chips = detect_chips();
+$disks = detect_disks();
+
+echo print_r($disks, true);
 ?>
