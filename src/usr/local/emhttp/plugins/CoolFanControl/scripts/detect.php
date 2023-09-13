@@ -33,15 +33,26 @@ function exec_command($command) {
     return empty($raw) ? [] : explode("\n", $raw);
 }
 
+function detect_pwms($path) {
+    $pathnames = exec_command("find ${path}/pwm[0-9]");
+    $pwms = [];
+    foreach($pathnames as $path) {
+        $pwms[] = [
+            "name" => basename($path),
+            "label" => file_get_contents($path."_label"),
+        ];
+    }
+    return $pwms;
+}
+
 function detect_sensors($path, $type) {
     $pathnames = exec_command("find ${path}/${type}[0-9]_input");
     $sensors = [];
     foreach($pathnames as $input) {
         $path = substr($input, 0, -6);
         $sensors[] = [
-            "name" => basename($input),
+            "name" => basename($path),
             "type" => $type,
-            "input" => $input,
             "label" => file_get_contents($path."_label"),
         ];
     }
@@ -55,7 +66,8 @@ function detect_chip($pathname) {
         "name" => file_get_contents($pathname),
         "path" => $path,
         "realpath" => realpath($path),      # TODO: this is nice, but do we care / need it for anything?
-        "sensors" => detect_sensors($path, "fan") + detect_sensors($path, "temp")
+        "pwms" => detect_pwms($path),
+        "sensors" => detect_sensors($path, "fan") + detect_sensors($path, "temp"),
     ];
 }
 
