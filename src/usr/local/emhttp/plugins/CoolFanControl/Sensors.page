@@ -47,7 +47,7 @@ Tag="fa-thermometer"
         </tr>
         <?php foreach($chip["sensors"] as $sensor): ?>
             <tr>
-                <td><?=$sensor["label"] ?: $sensor["name"]?></td>
+                <td><?=$sensor["label"]?></td>
                 <td><?=$sensor["type"]?></td>
                 <td><?=$sensor["input"]?></td>
                 <td>*</td>

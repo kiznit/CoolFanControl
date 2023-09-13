@@ -33,59 +33,33 @@ function exec_command($command) {
     return empty($raw) ? [] : explode("\n", $raw);
 }
 
-function detect_pwms($path) {
-    $pathnames = exec_command("find ${path}/pwm[0-9]");
-    $pwms = [];
-    foreach($pathnames as $path) {
-        $pwms[] = [
-            "name" => basename($path),
-            "label" => trim(file_get_contents($path."_label")),
-        ];
-    }
-    return $pwms;
-}
-
-function detect_sensors($path, $type) {
-    $pathnames = exec_command("find ${path}/${type}[0-9]_input");
-    $sensors = [];
-    foreach($pathnames as $input) {
-        $path = substr($input, 0, -6);
-        $sensors[] = [
-            "name" => basename($path),
-            "type" => $type,
-            "label" => trim(file_get_contents($path."_label")),
-        ];
-    }
-    return $sensors;
-}
-
-
-function detect_chip($pathname) {
-    $path = dirname($pathname);
-    return [
-        "name" => trim(file_get_contents($pathname)),
-        "path" => realpath($path),
-        "pwms" => detect_pwms($path),
-        "sensors" => detect_sensors($path, "fan") + detect_sensors($path, "temp"),
-    ];
-}
-
-
 function detect_chips() {
     $pathnames = exec_command("find /sys/class/hwmon/hwmon*/name -follow -maxdepth 1 -type f");
-    $chips = array_map(fn($pathname) => detect_chip($pathname), $pathnames);
-    $chips = array_filter($chips, fn($chip) => !empty($chip["sensors"]));
+
+    $chips = [];
+    $counts = [];
+    foreach($pathnames as $key => $pathname) {
+        $name = trim(file_get_contents($pathname));
+        $counts[$name] += 1;
+        $id = $name."-".$counts[$name];
+        $chips[$id] = [
+            "id" => $id,
+            "path" => realpath(dirname($pathname)),
+            "name" => $name,
+        ];
+    }
+
     return $chips;
 }
-
 
 function detect_disks() {
     $devices = exec_command("find /sys/block/{[hs]d*[a-z],nvme[0-9a-f]*}");
     $disks = [];
-    foreach($devices as $device) 
-    {
-        $disks[basename($device)] = [
-            "realpath" => realpath($device),
+    foreach($devices as $device) {
+        $id = basename($device);
+        $disks[$id] = [
+            "id" => $id,
+            "path" => realpath($device),
         ];
     }
 
@@ -95,7 +69,7 @@ function detect_disks() {
         $index = strpos($prefix, "/hwmon");
         if ($index) $prefix = substr($prefix, 0, $index);
         foreach($disks as &$disk) {
-            if (str_starts_with($disk["realpath"], $prefix)) {
+            if (str_starts_with($disk["path"], $prefix)) {
                 $disk["chip"] = $hwmon;
             }
         }
@@ -104,9 +78,52 @@ function detect_disks() {
     return $disks;
 }
 
+function detect_fans(&$chips) {
+    $fans = [];
+    foreach($chips as &$chip) {
+        $chip["fans"] = [];
+        $paths = exec_command("find ".$chip["path"]."/pwm[0-9]");
+        foreach($paths as $path) {
+            $id = $chip["id"]."-".basename($path);
+            $fan = [
+                "id" => $id,
+                "path" => $path,
+                "chip" => $chip["id"],
+                "label" => trim(file_get_contents($path."_label")) ?: basename($path),
+            ];
+            $fans[$id] = $fan;
+            $chip["fans"][$id] = $fan;
+        }
+    }
+    return $fans;
+}
+
+function detect_sensors(&$chips) {
+    $sensors = [];
+    foreach($chips as &$chip) {
+        $chip["sensors"] = [];
+        foreach(['fan', 'temp'] as $type) {
+            $inputs = exec_command("find ".$chip["path"]."/".$type."[0-9]_input");
+            foreach($inputs as $input) {
+                $path = substr($input, 0, -6);
+                $id = $chip["id"]."-".basename($path);
+                $sensor = [
+                    "id" => $id,
+                    "type" => $type,
+                    "path" => $input,
+                    "chip" => $chip["id"],
+                    "label" => trim(file_get_contents($path."_label")) ?: basename($path),
+                ];
+                $sensors[$id] = $sensor;
+                $chip["sensors"][$id] = $sensor;
+            }
+        }
+    }
+    return $sensors;
+}
 
 $chips = detect_chips();
 $disks = detect_disks();
-
-echo print_r($disks, true);
+$fans = detect_fans($chips);
+$sensors = detect_sensors($chips);
 ?>
